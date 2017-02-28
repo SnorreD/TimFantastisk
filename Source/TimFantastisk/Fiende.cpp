@@ -29,6 +29,8 @@ void AFiende::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	UE_LOG(YourLog, Warning, TEXT("MyCharacter's Location is %s"), NewDirection;
+
 	if (!CurrentVelocity.IsZero())
 	{
 		FVector NewLocation = GetActorLocation() + GetActorForwardVector()*(CurrentVelocity * DeltaTime);

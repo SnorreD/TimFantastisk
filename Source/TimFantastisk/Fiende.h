@@ -24,5 +24,5 @@ public:
 
 	FVector CurrentVelocity;
 	
-	
+	DECLARE_LOG_CATEGORY_EXTERN(YourLog, Log, All);
 };
