@@ -28,7 +28,20 @@ public:
 	void MoveX(float AxisValue);
 	void MoveY(float AxisValue);
 	void Jump();
+
+	FVector2D MovementInput;
 	
 	UPROPERTY(EditAnywhere)
 		USceneComponent* OurVisibleComponent;
+
+	/** Top down camera */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+		class UCameraComponent* TopDownCameraComponent;
+
+	/** Camera boom positioning the camera above the character */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+		class USpringArmComponent* CameraBoom;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+		class UDecalComponent* CursorToWorld;
 };

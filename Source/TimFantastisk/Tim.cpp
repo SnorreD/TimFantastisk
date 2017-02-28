@@ -8,13 +8,32 @@
 ATim::ATim()
 {
 	// Create a camera and a visible object
-	UCameraComponent* OurCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("OurCamera"));
 	OurVisibleComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("OurVisibleComponent"));
-	// Attach our camera and visible object to our root component. Offset and rotate the camera.
-	OurCamera->SetupAttachment(RootComponent);
-	OurCamera->SetRelativeLocation(FVector(-250.0f, 0.0f, 250.0f));
-	OurCamera->SetRelativeRotation(FRotator(-45.0f, 0.0f, 0.0f));
+
+	// Create a camera boom...
+	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
+	CameraBoom->SetupAttachment(RootComponent);
+	CameraBoom->bAbsoluteRotation = true; // Don't want arm to rotate when character does
+	CameraBoom->TargetArmLength = 800.f;
+	CameraBoom->RelativeRotation = FRotator(-60.f, 0.f, 0.f);
+	CameraBoom->bDoCollisionTest = false; // Don't want to pull camera in when it collides with level
+
+										  // Create a camera...
+	TopDownCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("TopDownCamera"));
+	TopDownCameraComponent->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
+	TopDownCameraComponent->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
+
 	OurVisibleComponent->SetupAttachment(RootComponent);
+
+	CursorToWorld = CreateDefaultSubobject<UDecalComponent>("CursorToWorld");
+	CursorToWorld->SetupAttachment(RootComponent);
+	static ConstructorHelpers::FObjectFinder<UMaterial> DecalMaterialAsset(TEXT("Assets'/Game/Assets/M_Cursor_Decal.M_Cursor_Decal'"));
+	if (DecalMaterialAsset.Succeeded())
+	{
+		CursorToWorld->SetDecalMaterial(DecalMaterialAsset.Object);
+	}
+	CursorToWorld->DecalSize = FVector(16.0f, 32.0f, 32.0f);
+	CursorToWorld->SetRelativeRotation(FRotator(90.0f, 0.0f, 0.0f).Quaternion());
 }
 
 // Called when the game starts or when spawned
@@ -28,6 +47,33 @@ void ATim::BeginPlay()
 void ATim::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	bool HitResult = false;
+
+	FHitResult Hit;
+	HitResult = GetWorld()->GetFirstPlayerController()->GetHitResultUnderCursorByChannel(UEngineTypes::ConvertToTraceType(ECC_WorldStatic), true, Hit);
+
+	if (HitResult)
+	{
+		FVector CursorFV = Hit.ImpactNormal;
+		FRotator CursorR = CursorFV.Rotation();
+		CursorToWorld->SetWorldLocation(Hit.Location);
+		CursorToWorld->SetWorldRotation(CursorR);
+
+
+		FVector CursorLocation = Hit.Location;
+		UE_LOG(LogTemp, Warning, TEXT("Cursor location %s!"), *CursorLocation.ToString());
+		FVector TempLocation = FVector(CursorLocation.X, CursorLocation.Y, 30.f);
+		//        if (CursorMesh)
+		//            CursorMesh->SetWorldLocation(TempLocation);
+		//        else
+		//            UE_LOG(LogTemp, Warning, TEXT("Cursor Mesh not found"));
+
+		FVector NewDirection = TempLocation - GetActorLocation();
+		NewDirection.Z = 0.f;
+		NewDirection.Normalize();
+		SetActorRotation(NewDirection.Rotation());
+	}
 
 }
 
@@ -45,31 +91,16 @@ void ATim::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 
 void ATim::MoveX(float AxisValue)
 {
-	if ((Controller != NULL) && (AxisValue != 0.0f))
-	{
-		// find out which way is forward
-		FRotator Rotation = Controller->GetControlRotation();
-		// Limit pitch when walking or falling
-		if (GetCharacterMovement()->IsMovingOnGround() || GetCharacterMovement()->IsFalling())
-		{
-			Rotation.Pitch = 0.0f;
-		}
-		// add movement in that direction
-		const FVector Direction = FRotationMatrix(Rotation).GetScaledAxis(EAxis::X);
-		AddMovementInput(Direction, AxisValue);
-	}
+	
+	AddMovementInput(GetActorForwardVector(), AxisValue);
+	
 }
 
 void ATim::MoveY(float AxisValue)
 {
-	if ((Controller != NULL) && (AxisValue != 0.0f))
-	{
-		// find out which way is right
-		const FRotator Rotation = Controller->GetControlRotation();
-		const FVector Direction = FRotationMatrix(Rotation).GetScaledAxis(EAxis::Y);
-		// add movement in that direction
-		AddMovementInput(Direction, AxisValue);
-	}
+	
+	AddMovementInput(GetActorRightVector(), AxisValue);
+	
 }
 
 void ATim::Jump()
